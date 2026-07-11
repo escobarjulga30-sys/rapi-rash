@@ -1,0 +1,145 @@
+name: Despliegue inicial completo
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+      ACR_NAME: ${{ secrets.AZURE_ACR_NAME }}
+      TAG: v1
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Login en Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Instalar extensión containerapp
+        run: az extension add --name containerapp --upgrade --only-show-errors
+
+      - name: Login en ACR
+        run: az acr login --name "$ACR_NAME"
+
+      - name: Build & push auth-service
+        run: |
+          docker build -t "$ACR_NAME.azurecr.io/rapirash/auth-service:$TAG" services/auth-service
+          docker push "$ACR_NAME.azurecr.io/rapirash/auth-service:$TAG"
+
+      - name: Build & push couriers-service
+        run: |
+          docker build -t "$ACR_NAME.azurecr.io/rapirash/couriers-service:$TAG" services/couriers-service
+          docker push "$ACR_NAME.azurecr.io/rapirash/couriers-service:$TAG"
+
+      - name: Build & push orders-service
+        run: |
+          docker build -t "$ACR_NAME.azurecr.io/rapirash/orders-service:$TAG" services/orders-service
+          docker push "$ACR_NAME.azurecr.io/rapirash/orders-service:$TAG"
+
+      - name: Build & push tracking-service
+        run: |
+          docker build -t "$ACR_NAME.azurecr.io/rapirash/tracking-service:$TAG" services/tracking-service
+          docker push "$ACR_NAME.azurecr.io/rapirash/tracking-service:$TAG"
+
+      - name: Build & push gateway
+        run: |
+          docker build -t "$ACR_NAME.azurecr.io/rapirash/gateway:$TAG" gateway
+          docker push "$ACR_NAME.azurecr.io/rapirash/gateway:$TAG"
+
+      - name: Leer variables de base de datos
+        run: |
+          echo "Usando base de datos ya creada en Azure"
+
+      - name: Desplegar auth-service
+        run: |
+          az containerapp create --name auth-service --resource-group "$RESOURCE_GROUP" \
+            --environment env-rapirash \
+            --image "$ACR_NAME.azurecr.io/rapirash/auth-service:$TAG" \
+            --registry-server "$ACR_NAME.azurecr.io" \
+            --target-port 4001 --ingress internal \
+            --min-replicas 1 --max-replicas 3 --cpu 0.25 --memory 0.5Gi \
+            --secrets "database-url=${{ secrets.DATABASE_URL }}" "jwt-secret=${{ secrets.JWT_SECRET }}" \
+            --env-vars "DATABASE_URL=secretref:database-url" "DB_SSL=true" "JWT_SECRET=secretref:jwt-secret" "PORT=4001" "JWT_EXPIRES_IN=8h"
+
+      - name: Desplegar couriers-service
+        run: |
+          az containerapp create --name couriers-service --resource-group "$RESOURCE_GROUP" \
+            --environment env-rapirash \
+            --image "$ACR_NAME.azurecr.io/rapirash/couriers-service:$TAG" \
+            --registry-server "$ACR_NAME.azurecr.io" \
+            --target-port 4002 --ingress internal \
+            --min-replicas 1 --max-replicas 5 \
+            --scale-rule-name http-scale --scale-rule-type http --scale-rule-http-concurrency 50 \
+            --cpu 0.25 --memory 0.5Gi \
+            --secrets "database-url=${{ secrets.DATABASE_URL }}" "jwt-secret=${{ secrets.JWT_SECRET }}" \
+            --env-vars "DATABASE_URL=secretref:database-url" "DB_SSL=true" "JWT_SECRET=secretref:jwt-secret" "PORT=4002"
+
+      - name: Desplegar tracking-service
+        run: |
+          az containerapp create --name tracking-service --resource-group "$RESOURCE_GROUP" \
+            --environment env-rapirash \
+            --image "$ACR_NAME.azurecr.io/rapirash/tracking-service:$TAG" \
+            --registry-server "$ACR_NAME.azurecr.io" \
+            --target-port 4004 --ingress internal \
+            --min-replicas 1 --max-replicas 5 \
+            --scale-rule-name http-scale --scale-rule-type http --scale-rule-http-concurrency 50 \
+            --cpu 0.25 --memory 0.5Gi \
+            --secrets "database-url=${{ secrets.DATABASE_URL }}" "jwt-secret=${{ secrets.JWT_SECRET }}" \
+            --env-vars "DATABASE_URL=secretref:database-url" "DB_SSL=true" "JWT_SECRET=secretref:jwt-secret" "PORT=4004"
+
+      - name: Obtener FQDN de couriers y tracking
+        id: fqdns1
+        run: |
+          COURIERS_FQDN=$(az containerapp show --name couriers-service --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
+          TRACKING_FQDN=$(az containerapp show --name tracking-service --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
+          echo "COURIERS_FQDN=$COURIERS_FQDN" >> "$GITHUB_ENV"
+          echo "TRACKING_FQDN=$TRACKING_FQDN" >> "$GITHUB_ENV"
+
+      - name: Desplegar orders-service
+        run: |
+          az containerapp create --name orders-service --resource-group "$RESOURCE_GROUP" \
+            --environment env-rapirash \
+            --image "$ACR_NAME.azurecr.io/rapirash/orders-service:$TAG" \
+            --registry-server "$ACR_NAME.azurecr.io" \
+            --target-port 4003 --ingress internal \
+            --min-replicas 1 --max-replicas 5 \
+            --scale-rule-name http-scale --scale-rule-type http --scale-rule-http-concurrency 50 \
+            --cpu 0.25 --memory 0.5Gi \
+            --secrets "database-url=${{ secrets.DATABASE_URL }}" "jwt-secret=${{ secrets.JWT_SECRET }}" \
+            --env-vars "DATABASE_URL=secretref:database-url" "DB_SSL=true" "JWT_SECRET=secretref:jwt-secret" "PORT=4003" \
+              "COURIERS_SERVICE_URL=https://${{ env.COURIERS_FQDN }}" \
+              "TRACKING_SERVICE_URL=https://${{ env.TRACKING_FQDN }}"
+
+      - name: Obtener FQDN de auth y orders
+        run: |
+          AUTH_FQDN=$(az containerapp show --name auth-service --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
+          ORDERS_FQDN=$(az containerapp show --name orders-service --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
+          echo "AUTH_FQDN=$AUTH_FQDN" >> "$GITHUB_ENV"
+          echo "ORDERS_FQDN=$ORDERS_FQDN" >> "$GITHUB_ENV"
+
+      - name: Desplegar gateway
+        run: |
+          az containerapp create --name gateway --resource-group "$RESOURCE_GROUP" \
+            --environment env-rapirash \
+            --image "$ACR_NAME.azurecr.io/rapirash/gateway:$TAG" \
+            --registry-server "$ACR_NAME.azurecr.io" \
+            --target-port 8080 --ingress external \
+            --min-replicas 1 --max-replicas 5 \
+            --scale-rule-name http-scale --scale-rule-type http --scale-rule-http-concurrency 50 \
+            --cpu 0.25 --memory 0.5Gi \
+            --env-vars "PORT=8080" \
+              "AUTH_SERVICE_URL=https://${{ env.AUTH_FQDN }}" \
+              "ORDERS_SERVICE_URL=https://${{ env.ORDERS_FQDN }}" \
+              "COURIERS_SERVICE_URL=https://${{ env.COURIERS_FQDN }}" \
+              "TRACKING_SERVICE_URL=https://${{ env.TRACKING_FQDN }}"
+
+      - name: Mostrar la URL pública final
+        run: |
+          GATEWAY_FQDN=$(az containerapp show --name gateway --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
+          echo "=========================================="
+          echo " URL pública de tu API: https://$GATEWAY_FQDN"
+          echo "=========================================="

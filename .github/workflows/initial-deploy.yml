@@ -25,6 +25,11 @@ jobs:
       - name: Login en ACR
         run: az acr login --name "$ACR_NAME"
 
+      - name: Obtener credenciales de ACR
+        run: |
+          echo "ACR_USERNAME=$(az acr credential show --name $ACR_NAME --query username -o tsv)" >> "$GITHUB_ENV"
+          echo "ACR_PASSWORD=$(az acr credential show --name $ACR_NAME --query passwords[0].value -o tsv)" >> "$GITHUB_ENV"
+
       - name: Build & push auth-service
         run: |
           docker build -t "$ACR_NAME.azurecr.io/rapirash/auth-service:$TAG" services/auth-service
@@ -50,16 +55,13 @@ jobs:
           docker build -t "$ACR_NAME.azurecr.io/rapirash/gateway:$TAG" gateway
           docker push "$ACR_NAME.azurecr.io/rapirash/gateway:$TAG"
 
-      - name: Leer variables de base de datos
-        run: |
-          echo "Usando base de datos ya creada en Azure"
-
       - name: Desplegar auth-service
         run: |
           az containerapp create --name auth-service --resource-group "$RESOURCE_GROUP" \
             --environment env-rapirash \
             --image "$ACR_NAME.azurecr.io/rapirash/auth-service:$TAG" \
             --registry-server "$ACR_NAME.azurecr.io" \
+            --registry-username "$ACR_USERNAME" --registry-password "$ACR_PASSWORD" \
             --target-port 4001 --ingress internal \
             --min-replicas 1 --max-replicas 3 --cpu 0.25 --memory 0.5Gi \
             --secrets "database-url=${{ secrets.DATABASE_URL }}" "jwt-secret=${{ secrets.JWT_SECRET }}" \
@@ -71,6 +73,7 @@ jobs:
             --environment env-rapirash \
             --image "$ACR_NAME.azurecr.io/rapirash/couriers-service:$TAG" \
             --registry-server "$ACR_NAME.azurecr.io" \
+            --registry-username "$ACR_USERNAME" --registry-password "$ACR_PASSWORD" \
             --target-port 4002 --ingress internal \
             --min-replicas 1 --max-replicas 5 \
             --scale-rule-name http-scale --scale-rule-type http --scale-rule-http-concurrency 50 \
@@ -84,6 +87,7 @@ jobs:
             --environment env-rapirash \
             --image "$ACR_NAME.azurecr.io/rapirash/tracking-service:$TAG" \
             --registry-server "$ACR_NAME.azurecr.io" \
+            --registry-username "$ACR_USERNAME" --registry-password "$ACR_PASSWORD" \
             --target-port 4004 --ingress internal \
             --min-replicas 1 --max-replicas 5 \
             --scale-rule-name http-scale --scale-rule-type http --scale-rule-http-concurrency 50 \
@@ -92,12 +96,9 @@ jobs:
             --env-vars "DATABASE_URL=secretref:database-url" "DB_SSL=true" "JWT_SECRET=secretref:jwt-secret" "PORT=4004"
 
       - name: Obtener FQDN de couriers y tracking
-        id: fqdns1
         run: |
-          COURIERS_FQDN=$(az containerapp show --name couriers-service --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
-          TRACKING_FQDN=$(az containerapp show --name tracking-service --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
-          echo "COURIERS_FQDN=$COURIERS_FQDN" >> "$GITHUB_ENV"
-          echo "TRACKING_FQDN=$TRACKING_FQDN" >> "$GITHUB_ENV"
+          echo "COURIERS_FQDN=$(az containerapp show --name couriers-service --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)" >> "$GITHUB_ENV"
+          echo "TRACKING_FQDN=$(az containerapp show --name tracking-service --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)" >> "$GITHUB_ENV"
 
       - name: Desplegar orders-service
         run: |
@@ -105,6 +106,7 @@ jobs:
             --environment env-rapirash \
             --image "$ACR_NAME.azurecr.io/rapirash/orders-service:$TAG" \
             --registry-server "$ACR_NAME.azurecr.io" \
+            --registry-username "$ACR_USERNAME" --registry-password "$ACR_PASSWORD" \
             --target-port 4003 --ingress internal \
             --min-replicas 1 --max-replicas 5 \
             --scale-rule-name http-scale --scale-rule-type http --scale-rule-http-concurrency 50 \
@@ -116,10 +118,8 @@ jobs:
 
       - name: Obtener FQDN de auth y orders
         run: |
-          AUTH_FQDN=$(az containerapp show --name auth-service --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
-          ORDERS_FQDN=$(az containerapp show --name orders-service --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
-          echo "AUTH_FQDN=$AUTH_FQDN" >> "$GITHUB_ENV"
-          echo "ORDERS_FQDN=$ORDERS_FQDN" >> "$GITHUB_ENV"
+          echo "AUTH_FQDN=$(az containerapp show --name auth-service --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)" >> "$GITHUB_ENV"
+          echo "ORDERS_FQDN=$(az containerapp show --name orders-service --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)" >> "$GITHUB_ENV"
 
       - name: Desplegar gateway
         run: |
@@ -127,6 +127,7 @@ jobs:
             --environment env-rapirash \
             --image "$ACR_NAME.azurecr.io/rapirash/gateway:$TAG" \
             --registry-server "$ACR_NAME.azurecr.io" \
+            --registry-username "$ACR_USERNAME" --registry-password "$ACR_PASSWORD" \
             --target-port 8080 --ingress external \
             --min-replicas 1 --max-replicas 5 \
             --scale-rule-name http-scale --scale-rule-type http --scale-rule-http-concurrency 50 \

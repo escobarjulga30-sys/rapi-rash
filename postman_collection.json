@@ -1,0 +1,119 @@
+{
+  "info": {
+    "name": "Rapi Rash API",
+    "description": "Flujo completo: registrar cliente y repartidor, crear pedido, actualizar estado y ver seguimiento.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080/api" },
+    { "key": "client_token", "value": "" },
+    { "key": "courier_token", "value": "" },
+    { "key": "courier_id", "value": "" },
+    { "key": "order_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Registrar cliente",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/auth/register",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Ana Cliente\",\n  \"email\": \"ana@rapirash.pe\",\n  \"password\": \"Password123!\",\n  \"role\": \"client\"\n}"
+        }
+      }
+    },
+    {
+      "name": "2. Registrar repartidor",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/auth/register",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Luis Repartidor\",\n  \"email\": \"luis@rapirash.pe\",\n  \"password\": \"Password123!\",\n  \"role\": \"courier\"\n}"
+        }
+      }
+    },
+    {
+      "name": "3. Login cliente",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"ana@rapirash.pe\",\n  \"password\": \"Password123!\"\n}"
+        }
+      }
+    },
+    {
+      "name": "4. Login repartidor",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"luis@rapirash.pe\",\n  \"password\": \"Password123!\"\n}"
+        }
+      }
+    },
+    {
+      "name": "5. Listar repartidores (con token de cualquiera)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{client_token}}" }],
+        "url": "{{base_url}}/couriers"
+      }
+    },
+    {
+      "name": "6. Repartidor se marca disponible",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{courier_token}}" }
+        ],
+        "url": "{{base_url}}/couriers/{{courier_id}}/status",
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"available\"\n}" }
+      }
+    },
+    {
+      "name": "7. Cliente crea un pedido",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{client_token}}" }
+        ],
+        "url": "{{base_url}}/orders",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"items\": [{ \"name\": \"Hamburguesa\", \"qty\": 2 }],\n  \"address\": \"Av. Los Próceres 123, Lima\"\n}"
+        }
+      }
+    },
+    {
+      "name": "8. Repartidor actualiza estado del pedido",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{courier_token}}" }
+        ],
+        "url": "{{base_url}}/orders/{{order_id}}/status",
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"picked_up\"\n}" }
+      }
+    },
+    {
+      "name": "9. Ver historial de seguimiento del pedido",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{client_token}}" }],
+        "url": "{{base_url}}/tracking/{{order_id}}"
+      }
+    }
+  ]
+}

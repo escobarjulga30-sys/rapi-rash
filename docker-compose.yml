@@ -1,0 +1,111 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: rapirash-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-rapirash}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rapirash_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-rapirash}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rapirash}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - rapirash-net
+
+  auth-service:
+    build: ./services/auth-service
+    container_name: rapirash-auth
+    restart: unless-stopped
+    environment:
+      PORT: 4001
+      DATABASE_URL: postgres://${POSTGRES_USER:-rapirash}:${POSTGRES_PASSWORD:-rapirash_dev_password}@postgres:5432/${POSTGRES_DB:-rapirash}
+      DB_SSL: "false"
+      JWT_SECRET: ${JWT_SECRET:-dev_super_secret_change_me}
+      JWT_EXPIRES_IN: 8h
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rapirash-net
+
+  couriers-service:
+    build: ./services/couriers-service
+    container_name: rapirash-couriers
+    restart: unless-stopped
+    environment:
+      PORT: 4002
+      DATABASE_URL: postgres://${POSTGRES_USER:-rapirash}:${POSTGRES_PASSWORD:-rapirash_dev_password}@postgres:5432/${POSTGRES_DB:-rapirash}
+      DB_SSL: "false"
+      JWT_SECRET: ${JWT_SECRET:-dev_super_secret_change_me}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rapirash-net
+
+  orders-service:
+    build: ./services/orders-service
+    container_name: rapirash-orders
+    restart: unless-stopped
+    environment:
+      PORT: 4003
+      DATABASE_URL: postgres://${POSTGRES_USER:-rapirash}:${POSTGRES_PASSWORD:-rapirash_dev_password}@postgres:5432/${POSTGRES_DB:-rapirash}
+      DB_SSL: "false"
+      JWT_SECRET: ${JWT_SECRET:-dev_super_secret_change_me}
+      COURIERS_SERVICE_URL: http://couriers-service:4002
+      TRACKING_SERVICE_URL: http://tracking-service:4004
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rapirash-net
+
+  tracking-service:
+    build: ./services/tracking-service
+    container_name: rapirash-tracking
+    restart: unless-stopped
+    environment:
+      PORT: 4004
+      DATABASE_URL: postgres://${POSTGRES_USER:-rapirash}:${POSTGRES_PASSWORD:-rapirash_dev_password}@postgres:5432/${POSTGRES_DB:-rapirash}
+      DB_SSL: "false"
+      JWT_SECRET: ${JWT_SECRET:-dev_super_secret_change_me}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rapirash-net
+
+  gateway:
+    build: ./gateway
+    container_name: rapirash-gateway
+    restart: unless-stopped
+    environment:
+      PORT: 8080
+      AUTH_SERVICE_URL: http://auth-service:4001
+      ORDERS_SERVICE_URL: http://orders-service:4003
+      COURIERS_SERVICE_URL: http://couriers-service:4002
+      TRACKING_SERVICE_URL: http://tracking-service:4004
+    ports:
+      - "8080:8080"
+    depends_on:
+      - auth-service
+      - orders-service
+      - couriers-service
+      - tracking-service
+    networks:
+      - rapirash-net
+
+networks:
+  rapirash-net:
+    driver: bridge
+
+volumes:
+  pgdata:

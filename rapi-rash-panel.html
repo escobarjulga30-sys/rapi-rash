@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rapi Rash — Panel de despacho</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#141b24;
+    --panel:#1c2530;
+    --panel-2:#212b38;
+    --line:#2c3846;
+    --text:#e7ecf1;
+    --muted:#8a97a6;
+    --amber:#f2a65a;
+    --amber-dim:#7a5a34;
+    --teal:#4fb6a8;
+    --red:#e0645a;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 600px at 85% -10%, rgba(242,166,90,0.08), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    display:flex;
+    min-height:100vh;
+  }
+  /* ---- Sidebar ---- */
+  .sidebar{
+    width:230px;
+    flex-shrink:0;
+    background:var(--panel);
+    border-right:1px solid var(--line);
+    padding:24px 16px;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .brand{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:19px;
+    letter-spacing:-0.01em;
+    margin-bottom:2px;
+    display:flex;
+    align-items:baseline;
+    gap:6px;
+  }
+  .brand .dot{color:var(--amber);}
+  .brand-sub{
+    font-size:11px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    margin-bottom:26px;
+  }
+  .navgroup-label{
+    font-size:10.5px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.1em;
+    margin:14px 8px 6px;
+  }
+  .navbtn{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    width:100%;
+    text-align:left;
+    background:transparent;
+    border:none;
+    color:var(--muted);
+    font-family:inherit;
+    font-size:14px;
+    font-weight:500;
+    padding:9px 10px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:background .15s, color .15s;
+  }
+  .navbtn:hover{background:var(--panel-2); color:var(--text);}
+  .navbtn.active{background:var(--panel-2); color:var(--amber);}
+  .navbtn .num{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--muted);
+    width:16px;
+  }
+  .navbtn.active .num{color:var(--amber);}
+  .sidebar-foot{
+    margin-top:auto;
+    padding-top:16px;
+    border-top:1px solid var(--line);
+    font-size:11px;
+    color:var(--muted);
+    line-height:1.6;
+  }
+  .sidebar-foot code{color:var(--teal); word-break:break-all;}
+
+  /* ---- Main ---- */
+  .main{flex:1; padding:32px 40px; max-width:920px;}
+  .view{display:none;}
+  .view.active{display:block; animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
+
+  h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:26px;
+    margin:0 0 4px;
+    letter-spacing:-0.01em;
+  }
+  .subtitle{color:var(--muted); font-size:14px; margin:0 0 28px;}
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:22px 24px;
+    margin-bottom:20px;
+  }
+  .card h2{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:15px;
+    margin:0 0 16px;
+    color:var(--text);
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .badge{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    padding:2px 7px;
+    border-radius:20px;
+    border:1px solid var(--line);
+    color:var(--muted);
+  }
+  .badge.ok{border-color:var(--teal); color:var(--teal);}
+  .badge.off{border-color:var(--line); color:var(--muted);}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  label{
+    display:block;
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:5px;
+    margin-top:12px;
+  }
+  label:first-child{margin-top:0;}
+  input,select,textarea{
+    width:100%;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:7px;
+    padding:9px 11px;
+    font-family:inherit;
+    font-size:13.5px;
+    outline:none;
+    transition:border-color .15s;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--amber);}
+  textarea{resize:vertical; min-height:60px; font-family:'JetBrains Mono',monospace; font-size:12.5px;}
+
+  .btnrow{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;}
+  button.action{
+    background:var(--amber);
+    color:#231405;
+    border:none;
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:13.5px;
+    padding:9px 18px;
+    border-radius:7px;
+    cursor:pointer;
+    transition:filter .15s, transform .1s;
+  }
+  button.action:hover{filter:brightness(1.08);}
+  button.action:active{transform:scale(.98);}
+  button.action.secondary{
+    background:transparent;
+    color:var(--text);
+    border:1px solid var(--line);
+  }
+  button.action.secondary:hover{border-color:var(--amber); color:var(--amber);}
+  button.action:disabled{opacity:.4; cursor:not-allowed;}
+
+  .role-toggle{display:flex; gap:8px; margin-bottom:4px;}
+  .role-toggle button{
+    flex:1;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--muted);
+    padding:8px;
+    border-radius:7px;
+    font-family:inherit;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .role-toggle button.sel{border-color:var(--amber); color:var(--amber); background:rgba(242,166,90,.08);}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th{
+    text-align:left;
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--muted);
+    padding:8px 10px;
+    border-bottom:1px solid var(--line);
+  }
+  td{padding:9px 10px; border-bottom:1px solid var(--line); font-family:'JetBrains Mono',monospace; font-size:12px;}
+  tr:last-child td{border-bottom:none;}
+  .pill{
+    display:inline-flex; align-items:center; gap:5px;
+    font-family:'JetBrains Mono',monospace; font-size:11px;
+    padding:2px 8px; border-radius:20px; border:1px solid var(--line);
+  }
+  .pill .d{width:6px; height:6px; border-radius:50%; background:var(--muted);}
+  .pill.available .d, .pill.delivered .d{background:var(--teal);}
+  .pill.available, .pill.delivered{color:var(--teal); border-color:var(--teal);}
+  .pill.busy .d, .pill.on_the_way .d, .pill.picked_up .d, .pill.assigned .d{background:var(--amber);}
+  .pill.busy, .pill.on_the_way, .pill.picked_up, .pill.assigned{color:var(--amber); border-color:var(--amber);}
+  .pill.offline .d, .pill.cancelled .d{background:var(--red);}
+  .pill.offline, .pill.cancelled{color:var(--red); border-color:var(--red);}
+  .pill.pending .d{background:var(--muted);}
+
+  .console{
+    background:#0e131a;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:14px 16px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11.5px;
+    color:var(--teal);
+    white-space:pre-wrap;
+    word-break:break-all;
+    max-height:220px;
+    overflow-y:auto;
+    margin-top:14px;
+  }
+  .console.empty{color:var(--muted);}
+  .console .err{color:var(--red);}
+
+  .hint{font-size:12px; color:var(--muted); margin-top:14px; line-height:1.6;}
+  .hint b{color:var(--text);}
+  .small{font-size:11px; color:var(--muted); margin-top:6px;}
+  .idtag{font-family:'JetBrains Mono',monospace; color:var(--amber); font-size:12px;}
+
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--line); border-radius:4px;}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="brand"><span>Rapi<span class="dot">·</span>Rash</span></div>
+  <div class="brand-sub">Panel de despacho</div>
+
+  <div class="navgroup-label">Flujo</div>
+  <button class="navbtn active" data-view="cuenta"><span class="num">01</span> Cuenta</button>
+  <button class="navbtn" data-view="repartidores"><span class="num">02</span> Repartidores</button>
+  <button class="navbtn" data-view="pedidos"><span class="num">03</span> Pedidos</button>
+  <button class="navbtn" data-view="seguimiento"><span class="num">04</span> Seguimiento</button>
+
+  <div class="sidebar-foot">
+    Conectado a la API en Azure Container Apps:<br>
+    <code id="apiHost"></code>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ===== VISTA 1: CUENTA ===== -->
+  <div class="view active" id="view-cuenta">
+    <h1>Cuenta</h1>
+    <p class="subtitle">Regístrate o inicia sesión como cliente o repartidor. Cada rol tiene su propio token.</p>
+
+    <div class="card">
+      <h2>Registro / Inicio de sesión <span class="badge off" id="statusRole">sin sesión</span></h2>
+      <div class="role-toggle">
+        <button class="sel" data-role="client" id="roleClientBtn">Cliente</button>
+        <button data-role="courier" id="roleCourierBtn">Repartidor</button>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <label>Nombre</label>
+          <input id="regName" placeholder="Ana Cliente">
+          <label>Correo</label>
+          <input id="regEmail" placeholder="ana@rapirash.pe">
+          <label>Contraseña</label>
+          <input id="regPass" type="password" placeholder="Password123!">
+        </div>
+        <div>
+          <label>Correo (para iniciar sesión)</label>
+          <input id="loginEmail" placeholder="ana@rapirash.pe">
+          <label>Contraseña</label>
+          <input id="loginPass" type="password" placeholder="Password123!">
+        </div>
+      </div>
+
+      <div class="btnrow">
+        <button class="action" onclick="doRegister()">Registrarme</button>
+        <button class="action secondary" onclick="doLogin()">Iniciar sesión</button>
+      </div>
+
+      <div class="hint">
+        <b>Cliente activo:</b> <span id="clientInfo">ninguno</span><br>
+        <b>Repartidor activo:</b> <span id="courierInfo">ninguno</span>
+      </div>
+
+      <div class="console empty" id="consoleCuenta">Las respuestas de la API aparecerán aquí...</div>
+    </div>
+  </div>
+
+  <!-- ===== VISTA 2: REPARTIDORES ===== -->
+  <div class="view" id="view-repartidores">
+    <h1>Repartidores</h1>
+    <p class="subtitle">Consulta el estado de los repartidores registrados y cambia su disponibilidad.</p>
+
+    <div class="card">
+      <h2>Lista de repartidores</h2>
+      <div class="btnrow" style="margin-top:0;">
+        <button class="action secondary" onclick="loadCouriers()">Actualizar lista</button>
+      </div>
+      <table id="courierTable" style="margin-top:14px;">
+        <thead><tr><th>Nombre</th><th>ID</th><th>Estado</th><th>Acción</th></tr></thead>
+        <tbody id="courierTbody"></tbody>
+      </table>
+      <div class="console empty" id="consoleCouriers">Las respuestas de la API aparecerán aquí...</div>
+    </div>
+  </div>
+
+  <!-- ===== VISTA 3: PEDIDOS ===== -->
+  <div class="view" id="view-pedidos">
+    <h1>Pedidos</h1>
+    <p class="subtitle">Como cliente, crea un pedido (se asigna repartidor automáticamente si hay uno disponible). Como repartidor, actualiza su estado.</p>
+
+    <div class="card">
+      <h2>Crear pedido <span class="badge off" id="orderRoleBadge">requiere sesión de cliente</span></h2>
+      <label>Dirección de entrega</label>
+      <input id="orderAddress" placeholder="Av. Los Próceres 123, Lima">
+      <label>Ítems (uno por línea: nombre, cantidad)</label>
+      <textarea id="orderItems">Hamburguesa, 2
+Papas fritas, 1</textarea>
+      <div class="btnrow">
+        <button class="action" onclick="createOrder()">Crear pedido</button>
+      </div>
+      <div class="console empty" id="consoleCreateOrder">Las respuestas de la API aparecerán aquí...</div>
+    </div>
+
+    <div class="card">
+      <h2>Actualizar estado del pedido <span class="badge off" id="updateRoleBadge">requiere sesión de repartidor</span></h2>
+      <div class="grid2">
+        <div>
+          <label>ID del pedido</label>
+          <input id="updateOrderId" placeholder="se autocompleta al crear uno">
+        </div>
+        <div>
+          <label>Nuevo estado</label>
+          <select id="updateStatus">
+            <option value="picked_up">picked_up — recogido</option>
+            <option value="on_the_way">on_the_way — en camino</option>
+            <option value="delivered">delivered — entregado</option>
+            <option value="cancelled">cancelled — cancelado</option>
+          </select>
+        </div>
+      </div>
+      <div class="btnrow">
+        <button class="action" onclick="updateOrderStatus()">Actualizar estado</button>
+      </div>
+      <div class="console empty" id="consoleUpdateOrder">Las respuestas de la API aparecerán aquí...</div>
+    </div>
+  </div>
+
+  <!-- ===== VISTA 4: SEGUIMIENTO ===== -->
+  <div class="view" id="view-seguimiento">
+    <h1>Seguimiento</h1>
+    <p class="subtitle">Consulta el historial completo de un pedido: cada cambio de estado queda registrado por tracking-service.</p>
+
+    <div class="card">
+      <h2>Historial del pedido</h2>
+      <label>ID del pedido</label>
+      <input id="trackOrderId" placeholder="se autocompleta al crear uno">
+      <div class="btnrow">
+        <button class="action" onclick="loadTracking()">Ver historial</button>
+      </div>
+      <table id="trackTable" style="margin-top:14px;">
+        <thead><tr><th>Estado</th><th>Fecha</th><th>Nota</th></tr></thead>
+        <tbody id="trackTbody"></tbody>
+      </table>
+      <div class="console empty" id="consoleTracking">Las respuestas de la API aparecerán aquí...</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+// Configura aquí la URL de tu gateway desplegado en Azure
+// ============================================================
+const API_BASE = "https://gateway.redgrass-788f4112.canadacentral.azurecontainerapps.io/api";
+
+document.getElementById('apiHost').textContent = API_BASE.replace('https://','').replace('/api','');
+
+let state = {
+  role: 'client',
+  clientToken: null, clientName: null,
+  courierToken: null, courierName: null, courierId: null,
+  lastOrderId: null
+};
+
+// ---------- Navegación ----------
+document.querySelectorAll('.navbtn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.navbtn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+  });
+});
+
+document.getElementById('roleClientBtn').addEventListener('click', ()=>setRole('client'));
+document.getElementById('roleCourierBtn').addEventListener('click', ()=>setRole('courier'));
+function setRole(r){
+  state.role = r;
+  document.getElementById('roleClientBtn').classList.toggle('sel', r==='client');
+  document.getElementById('roleCourierBtn').classList.toggle('sel', r==='courier');
+}
+
+// ---------- Utilidad para llamar la API ----------
+async function api(method, path, body, token, consoleId){
+  const el = consoleId ? document.getElementById(consoleId) : null;
+  try{
+    const res = await fetch(API_BASE + path, {
+      method,
+      headers:{
+        'Content-Type':'application/json',
+        ...(token ? {'Authorization':'Bearer '+token} : {})
+      },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const data = await res.json().catch(()=>({}));
+    if(el){
+      el.classList.remove('empty');
+      el.innerHTML = (res.ok ? '' : '<span class="err">HTTP '+res.status+'</span>\n') + JSON.stringify(data, null, 2);
+    }
+    if(!res.ok) throw new Error(data.error || 'Error desconocido');
+    return data;
+  }catch(err){
+    if(el){ el.classList.remove('empty'); el.innerHTML += '\n<span class="err">'+err.message+'</span>'; }
+    throw err;
+  }
+}
+
+function refreshStatusBadges(){
+  document.getElementById('clientInfo').textContent = state.clientToken ? (state.clientName+' — conectada/o') : 'ninguno';
+  document.getElementById('courierInfo').textContent = state.courierToken ? (state.courierName+' — conectada/o') : 'ninguno';
+  const sb = document.getElementById('statusRole');
+  if(state.clientToken || state.courierToken){ sb.textContent='sesión activa'; sb.classList.add('ok'); sb.classList.remove('off'); }
+  document.getElementById('orderRoleBadge').textContent = state.clientToken ? 'listo: sesión de cliente activa' : 'requiere sesión de cliente';
+  document.getElementById('orderRoleBadge').classList.toggle('ok', !!state.clientToken);
+  document.getElementById('orderRoleBadge').classList.toggle('off', !state.clientToken);
+  document.getElementById('updateRoleBadge').textContent = state.courierToken ? 'listo: sesión de repartidor activa' : 'requiere sesión de repartidor';
+  document.getElementById('updateRoleBadge').classList.toggle('ok', !!state.courierToken);
+  document.getElementById('updateRoleBadge').classList.toggle('off', !state.courierToken);
+}
+
+// ---------- Cuenta ----------
+async function doRegister(){
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPass').value;
+  if(!name || !email || !password){ alert('Completa nombre, correo y contraseña'); return; }
+  try{
+    const data = await api('POST','/auth/register',{name,email,password,role:state.role}, null, 'consoleCuenta');
+    applySession(data);
+  }catch(e){}
+}
+async function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPass').value;
+  if(!email || !password){ alert('Completa correo y contraseña'); return; }
+  try{
+    const data = await api('POST','/auth/login',{email,password}, null, 'consoleCuenta');
+    applySession(data);
+  }catch(e){}
+}
+function applySession(data){
+  if(data.user.role === 'client'){
+    state.clientToken = data.token; state.clientName = data.user.name;
+  } else if(data.user.role === 'courier'){
+    state.courierToken = data.token; state.courierName = data.user.name;
+  }
+  refreshStatusBadges();
+}
+
+// ---------- Repartidores ----------
+async function loadCouriers(){
+  const token = state.courierToken || state.clientToken;
+  if(!token){ alert('Inicia sesión primero (como cliente o repartidor) para consultar repartidores'); return; }
+  try{
+    const list = await api('GET','/couriers', null, token, 'consoleCouriers');
+    const tbody = document.getElementById('courierTbody');
+    tbody.innerHTML = '';
+    list.forEach(c=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="font-family:Inter,sans-serif;">${c.name}</td>
+        <td class="idtag">${c.id.slice(0,8)}…</td>
+        <td><span class="pill ${c.status}"><span class="d"></span>${c.status}</span></td>
+        <td><button class="action secondary" style="padding:5px 10px; font-size:12px;" onclick="setCourierAvailable('${c.id}')">Marcar disponible</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }catch(e){}
+}
+async function setCourierAvailable(id){
+  if(!state.courierToken){ alert('Inicia sesión como repartidor para cambiar tu propio estado'); return; }
+  try{
+    await api('PATCH','/couriers/'+id+'/status', {status:'available'}, state.courierToken, 'consoleCouriers');
+    state.courierId = id;
+    loadCouriers();
+  }catch(e){}
+}
+
+// ---------- Pedidos ----------
+async function createOrder(){
+  if(!state.clientToken){ alert('Inicia sesión como cliente primero (pestaña Cuenta)'); return; }
+  const address = document.getElementById('orderAddress').value.trim();
+  const rawItems = document.getElementById('orderItems').value.trim();
+  if(!address || !rawItems){ alert('Completa la dirección y al menos un ítem'); return; }
+  const items = rawItems.split('\n').filter(Boolean).map(line=>{
+    const [name, qty] = line.split(',');
+    return { name: (name||'').trim(), qty: parseInt(qty)||1 };
+  });
+  try{
+    const order = await api('POST','/orders', {items, address}, state.clientToken, 'consoleCreateOrder');
+    state.lastOrderId = order.id;
+    document.getElementById('updateOrderId').value = order.id;
+    document.getElementById('trackOrderId').value = order.id;
+  }catch(e){}
+}
+async function updateOrderStatus(){
+  if(!state.courierToken){ alert('Inicia sesión como repartidor primero (pestaña Cuenta)'); return; }
+  const id = document.getElementById('updateOrderId').value.trim();
+  const status = document.getElementById('updateStatus').value;
+  if(!id){ alert('Falta el ID del pedido'); return; }
+  try{
+    await api('PATCH','/orders/'+id+'/status', {status}, state.courierToken, 'consoleUpdateOrder');
+  }catch(e){}
+}
+
+// ---------- Seguimiento ----------
+async function loadTracking(){
+  const token = state.clientToken || state.courierToken;
+  if(!token){ alert('Inicia sesión primero para consultar el seguimiento'); return; }
+  const id = document.getElementById('trackOrderId').value.trim();
+  if(!id){ alert('Falta el ID del pedido'); return; }
+  try{
+    const events = await api('GET','/tracking/'+id, null, token, 'consoleTracking');
+    const tbody = document.getElementById('trackTbody');
+    tbody.innerHTML = '';
+    events.forEach(ev=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="pill ${ev.status}"><span class="d"></span>${ev.status}</span></td>
+        <td>${new Date(ev.created_at).toLocaleString('es-PE')}</td>
+        <td style="font-family:Inter,sans-serif;">${ev.note || '—'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }catch(e){}
+}
+
+refreshStatusBadges();
+</script>
+</body>
+</html>
